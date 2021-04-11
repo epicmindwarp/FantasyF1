@@ -1,9 +1,9 @@
 from datetime import datetime as dt
 
-import config
 AUTHOR_NAME = 'epicmindwarp'
 
 URL_API_F1 = 'https://fantasy-api.formula1.com/partner_games/f1/players'
+
 
 
 def get_json_data():
@@ -24,6 +24,7 @@ def get_json_data():
     data_teams['players'] = sorted(data_teams['players'], key=lambda k: k['price'], reverse=True)
 
     return data_players, data_teams
+
 
 
 def get_player_data(data_players):
@@ -104,32 +105,43 @@ def reddit_login():
 
     import praw
 
+    # File with dictionary with creds
+    import config
+
     print('Connecting to reddit...')
 
-    client_id = config.reddit_ccb['client_id']
-    client_secret = config.reddit_ccb['client_secret']
-    username = config.reddit_ccb['username']
-    password = config.reddit_ccb['password']
+    client_id       = config.reddit_ccb['client_id']
+    client_secret   = config.reddit_ccb['client_secret']
+    username        = config.reddit_ccb['username']
+    password        = config.reddit_ccb['password']
 
     try:
         reddit = praw.Reddit(   client_id= client_id,
                                 client_secret= client_secret,
-                                user_agent=f'/r/AskUK Suggested Sort Bot - v0.3, by /u/{AUTHOR_NAME}',
+                                user_agent=f'/r/FantasyF1 Price Changes Bot - v0.1, by /u/{AUTHOR_NAME}',
                                 username=username,
                                 password=password)
 
     except Exception as e:
-        print(f'\t### ERROR - Could not login.\n\t{e}')
+        print(f'\t### ERROR - Could not login to reddit\n\t{e}')
         return False
 
-    print(f'Logged in as: {reddit.user.me()}')
-    
-    return reddit
+    # Ensure it's usable
+    if not reddit.read_only:
+        print(f'Logged in as: {reddit.user.me()}')
+        return reddit
+    else:
+        print('\t### Error - a usable reddit object was not returned!')
+        return False
 
 
 def submit_to_sub(as_at_date, header, table_player, table_team, footer):
 
     r = reddit_login()
+
+    if not r:
+        return False
+
     subreddit_name = 'fantasyf1'
 
     # Prepare post contents
