@@ -1,12 +1,16 @@
-import json
-import urllib.request
 from datetime import datetime as dt
+
+import config
+AUTHOR_NAME = 'epicmindwarp'
 
 URL_API_F1 = 'https://fantasy-api.formula1.com/partner_games/f1/players'
 
 
 def get_json_data():
 
+    import json
+    import urllib.request
+    
     # Read the contents of the URL
     web_page_data = urllib.request.urlopen(URL_API_F1).read()
 
@@ -88,7 +92,6 @@ def get_team_data(data_teams):
 
     # If information was added
     if len(table_team) > len_header:
-        table_team += f'\nPrices as at {dt.now().strftime("%Y-%m-%d %H:%M:%S")} (UK Time)'
         print(table_team)
         return table_team
     else:
@@ -96,12 +99,88 @@ def get_team_data(data_teams):
         return False
 
 
+
+def reddit_login():
+
+    import praw
+
+    print('Connecting to reddit...')
+
+    client_id = config.reddit_ccb['client_id']
+    client_secret = config.reddit_ccb['client_secret']
+    username = config.reddit_ccb['username']
+    password = config.reddit_ccb['password']
+
+    try:
+        reddit = praw.Reddit(   client_id= client_id,
+                                client_secret= client_secret,
+                                user_agent=f'/r/AskUK Suggested Sort Bot - v0.3, by /u/{AUTHOR_NAME}',
+                                username=username,
+                                password=password)
+
+    except Exception as e:
+        print(f'\t### ERROR - Could not login.\n\t{e}')
+        return False
+
+    print(f'Logged in as: {reddit.user.me()}')
+    
+    return reddit
+
+
+def submit_to_sub(as_at_date, header, table_player, table_team, footer):
+
+    r = reddit_login()
+    subreddit_name = 'fantasyf1'
+
+    # Prepare post contents
+    title = f'{as_at_date} - Latest Prices and Changes'
+    selftext = header + table_player + table_team + footer
+
+    # Submit the post
+    new_post = r.subreddit(subreddit_name).submit(title, selftext=selftext, send_replies=False)
+
+    # Always place at top
+    new_post.mod.distinguish(how='yes', sticky=True)
+
+    # Set the flair to Price changes
+    new_post.mod.flair(text="Price Changes", flair_template_id="377b8eec-bb89-11ea-b523-0ef7de3e98b9")
+
+    # Confirmation output
+    print(f'\t#{dt.now().strftime("%Y-%m-%d %H:%M:%S")} - Succesfully posted: {title} at ')
+
+
 #------------------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
 
-data_players, data_teams = get_json_data()
+def get_latest_prices():
 
-get_player_data(data_players=data_players)
+    as_at_date = dt.now().strftime('%Y-%m-%d')
 
-get_team_data(data_teams=data_teams )
+    data_players, data_teams = get_json_data()
+
+    table_player = get_player_data(data_players=data_players)
+
+    table_team = get_team_data(data_teams=data_teams)
+
+    # Add footer
+    header = f'Prices as at {dt.now().strftime("%Y-%m-%d %H:%M:%S")} (UK Time)\n'
+    footer = f'\nSource: formula1.com'
+
+    # Upload to the subreddit
+    submit_to_sub(as_at_date, header, table_player, table_team, footer)
+
+
+
+if __name__ == '__main__':
+
+    try:
+        get_latest_prices()
+    except Exception as e:
+
+        import os
+        
+        if os.name == 'nt':
+            raise
+        else:
+            print(f'\t### ERROR - ABORTED - {e}')
