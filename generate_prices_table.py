@@ -61,7 +61,7 @@ def get_player_data(data_players):
     # If information was added
     if len(table_player) > len_header:
         table_player = table_player + '\n----\n'
-        print(table_player)
+        #print(table_player)
         return table_player
     else:
         print('\t### No player data found!')
@@ -93,7 +93,7 @@ def get_team_data(data_teams):
 
     # If information was added
     if len(table_team) > len_header:
-        print(table_team)
+        #print(table_team)
         return table_team
     else:
         print('\t### No team data found!')
@@ -122,6 +122,8 @@ def reddit_login():
                                 username=username,
                                 password=password)
 
+        reddit.validate_on_submit = True
+
     except Exception as e:
         print(f'\t### ERROR - Could not login to reddit\n\t{e}')
         return False
@@ -133,6 +135,7 @@ def reddit_login():
     else:
         print('\t### Error - a usable reddit object was not returned!')
         return False
+
 
 
 def submit_to_sub(as_at_date, header, table_player, table_team, footer):
@@ -151,8 +154,11 @@ def submit_to_sub(as_at_date, header, table_player, table_team, footer):
     # Submit the post
     new_post = r.subreddit(subreddit_name).submit(title, selftext=selftext, send_replies=False)
 
-    # Always place at top
-    new_post.mod.distinguish(how='yes', sticky=True)
+    # Distinguish post
+    new_post.mod.distinguish(how='yes')
+
+    # Set as bottom sticky
+    new_post.mod.sticky(state=True, bottom=True)
 
     # Set the flair to Price changes
     new_post.mod.flair(text="Price Changes", flair_template_id="377b8eec-bb89-11ea-b523-0ef7de3e98b9")
@@ -160,6 +166,28 @@ def submit_to_sub(as_at_date, header, table_player, table_team, footer):
     # Confirmation output
     print(f'\t#{dt.now().strftime("%Y-%m-%d %H:%M:%S")} - Succesfully posted: {title} at ')
 
+
+
+def update_post(as_at_date, header, table_player, table_team, footer):
+
+    r = reddit_login()
+
+    if not r:
+        return False
+
+    # Prepare post contents
+    title = f'{as_at_date} - Latest Prices and Changes'
+    selftext = header + table_player + table_team + footer
+
+    # Submit the post to a specific ID
+    submission_id = 'n9s0a9'
+    update_post = r.submission(submission_id)
+
+    # Update the contents of the post
+    update_post.edit(selftext)
+
+    # Confirmation output
+    print(f'\t#{dt.now().strftime("%Y-%m-%d %H:%M:%S")} - Succesfully updated: {submission_id}!')
 
 #------------------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
@@ -176,11 +204,30 @@ def get_latest_prices():
     table_team = get_team_data(data_teams=data_teams)
 
     # Add footer
-    header = f'Prices as at {dt.now().strftime("%Y-%m-%d %H:%M:%S")} (UK Time)\n'
+    header = f'''### Do you want to get feedback on your team (known as Rate my Team)?
+
+#### Ask it here.
+
+____
+
+### Do you have a question about which driver to use? Turbo, Mega? Choosing between drivers?
+
+#### Ask it here.
+
+____
+
+### Latest Prices
+
+
+Prices as at {dt.now().strftime("%Y-%m-%d %H:%M:%S")} (UK Time)\n
+'''
+
     footer = f'\nSource: formula1.com'
 
     # Upload to the subreddit
-    submit_to_sub(as_at_date, header, table_player, table_team, footer)
+    #submit_to_sub(as_at_date, header, table_player, table_team, footer)
+
+    update_post(as_at_date, header, table_player, table_team, footer)
 
 
 
